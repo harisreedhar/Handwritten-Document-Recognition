@@ -5,9 +5,9 @@ import pickle
 import random
 import numpy as np
 from path import Path
-from utils import preprocess
+from . utils import preprocess
 
-CURR_WORKDIR = os.getcwd()
+CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
 DATASET_DIR  = CURR_WORKDIR + '/dataset'
 IAM_DIR      = DATASET_DIR + '/IAM/img'
 LMDB_PATH    = Path(DATASET_DIR + '/IAM/lmdb')
