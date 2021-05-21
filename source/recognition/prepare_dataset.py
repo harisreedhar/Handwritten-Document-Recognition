@@ -7,6 +7,7 @@ import numpy as np
 from path import Path
 from . utils import preprocess
 
+# path
 CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
 DATASET_DIR  = CURR_WORKDIR + '/dataset'
 IAM_DIR      = DATASET_DIR + '/IAM/img'
@@ -65,7 +66,7 @@ class DataLoaderIAM:
     def __init__(self, data_dir, batchSize, imgSize, maxTextLen, fast=True):
         "loader for dataset at given location, preprocess images and text according to parameters"
 
-        assert data_dir.exists()
+        #assert data_dir.exists()
 
         self.fast = fast
         if fast:
@@ -78,6 +79,7 @@ class DataLoaderIAM:
         self.imgSize = imgSize
         self.samples = []
 
+        data_dir = Path(DATASET_DIR + "/IAM/")
         f = open(data_dir / 'gt/words.txt')
         chars = set()
         # known broken images in IAM dataset
