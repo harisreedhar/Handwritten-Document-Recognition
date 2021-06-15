@@ -37,7 +37,6 @@ class Model:
         self.mustRestore = mustRestore
         self.snapID = 0
 
-        # Whether to use normalization over a batch or a population
         self.is_train = tf.compat.v1.placeholder(tf.bool, name='is_train')
 
         # input image batch
@@ -92,13 +91,12 @@ class Model:
 
             pool = tf.nn.max_pool2d(input=relu2, ksize=(1, poolVals[i][0], poolVals[i][1], 1),
                                     strides=(1, strideVals[i][0], strideVals[i][1], 1), padding='VALID')
-
-
-
+        # 32 x 256
         self.cnnOut4d = pool
 
     def setupRNN(self):
         "create RNN layers and return output of these layers"
+        # cnn out -> rnn in
         rnnIn3d = tf.squeeze(self.cnnOut4d, axis=[2])
 
         # basic cells which is used to build RNN
@@ -110,20 +108,20 @@ class Model:
         stacked = tf.compat.v1.nn.rnn_cell.MultiRNNCell(cells, state_is_tuple=True)
 
         # bidirectional RNN
-        # BxTxF -> BxTx2H
         ((fw, bw), _) = tf.compat.v1.nn.bidirectional_dynamic_rnn(cell_fw=stacked, cell_bw=stacked, inputs=rnnIn3d,
                                                                   dtype=rnnIn3d.dtype)
 
-        # BxTxH + BxTxH -> BxTx2H -> BxTx1X2H
         concat = tf.expand_dims(tf.concat([fw, bw], 2), 2)
 
-        # project output to chars (including blank): BxTx1x2H -> BxTx1xC -> BxTxC
+        # project output to chars
         kernel = tf.Variable(tf.random.truncated_normal([1, 1, numHidden * 2, len(self.charList) + 1], stddev=0.1))
+        # 32 x 80 (79 + 1 (blank label))
         self.rnnOut3d = tf.squeeze(tf.nn.atrous_conv2d(value=concat, filters=kernel, rate=1, padding='SAME'), axis=[2])
 
     def setupCTC(self):
         "create CTC loss and decoder and return them"
-        # BxTxC -> TxBxC
+
+        # rnn out -> ctc in
         self.ctcIn3dTBC = tf.transpose(a=self.rnnOut3d, perm=[1, 0, 2])
         # ground truth text as sparse tensor
         self.gtTexts = tf.SparseTensor(tf.compat.v1.placeholder(tf.int64, shape=[None, 2]),

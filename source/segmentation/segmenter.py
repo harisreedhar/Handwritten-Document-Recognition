@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
-from utils import resize, ratio, writeText
+from . utils import resize, ratio, writeText
 
 class DetectWords:
     debugImages = []
@@ -23,7 +23,7 @@ class DetectWords:
         # Find threshold image
         _, edgeImage = cv2.threshold(edgeImage, 50, 255, cv2.THRESH_BINARY)
         # Fill edges
-        filledImage = cv2.morphologyEx(edgeImage, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+        filledImage = cv2.morphologyEx(edgeImage, cv2.MORPH_CLOSE, np.ones((20, 20), np.uint8))
 
         self.debugImages.append([blurred, "1_blurred"])
         self.debugImages.append([edgeImage, "2_edgeImage"])

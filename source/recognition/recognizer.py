@@ -10,11 +10,14 @@ from . prepare_dataset import DataLoaderIAM, Batch
 from . Model import Model, DecoderType
 from . utils import preprocess
 
+import timeit
+start = timeit.default_timer()
+
 DATASET_DIR = Path("/home/hari/Documents/s6Project_New/recognition/dataset/")
 CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
 
 # set wordbeam search as default decoder
-decoderType = DecoderType.WordBeamSearch
+decoderType = DecoderType.BestPath
 
 class FilePaths:
     "filenames and paths to data"
@@ -102,6 +105,7 @@ def validate(model, loader):
     charErrorRate = numCharErr / numCharTotal
     wordAccuracy = numWordOK / numWordTotal
     print(f'Character error rate: {charErrorRate * 100.0}%. Word accuracy: {wordAccuracy * 100.0}%.')
+    print(f'time:{timeit.default_timer()-start}')
     return charErrorRate, wordAccuracy
 
 
@@ -110,10 +114,13 @@ def infer(model, fnImg):
     img = preprocess(cv2.imread(fnImg, cv2.IMREAD_GRAYSCALE), Model.imgSize)
     batch = Batch(None, [img])
     (recognized, probability) = model.inferBatch(batch, True)
+    print('___________ Output ___________')
+    print('')
     print(f'Recognized: "{recognized[0]}"')
     print(f'Probability: {probability[0]}')
+    print('______________________________')
 
-def startTrain(batchSize=100):
+def startTrain(batchSize=200):
     loader = DataLoaderIAM(DATASET_DIR, batchSize, Model.imgSize, Model.maxTextLen, True)
     open(FilePaths.fnCharList, 'w').write(str().join(loader.charList))
     open(FilePaths.fnCorpus, 'w').write(str(' ').join(loader.trainWords + loader.validationWords))
@@ -123,6 +130,10 @@ def startTrain(batchSize=100):
 def recognizeText(imagePath):
     model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, dump=False)
     infer(model, imagePath)
+
+def getModel():
+    model = Model(open(FilePaths.fnCharList).read(), decoderType, mustRestore=True, dump=False)
+    return model, Batch
 
 if __name__ == '__main__':
     recognizeText(FilePaths.fnInfer)
