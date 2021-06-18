@@ -16,3 +16,16 @@ def resize(img, height=SMALL_HEIGHT, allways=False):
 
 def ratio(img, height=SMALL_HEIGHT):
     return img.shape[0] / height
+
+def thickenImage(img, amount=1, kernalSize = 3):
+    if amount == 0:
+        return img
+    pxmin = np.min(img)
+    pxmax = np.max(img)
+    imgContrast = (img - pxmin) / (pxmax - pxmin) * 255
+    kernel = np.ones((kernalSize, kernalSize), np.uint8)
+    if amount < 0:
+        thinned = cv2.dilate(imgContrast, kernel, iterations = -amount)
+        return thinned.astype('uint8')
+    thickened = cv2.erode(imgContrast, kernel, iterations = amount)
+    return thickened.astype('uint8')

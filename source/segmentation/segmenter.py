@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from PIL import Image
-from . utils import resize, ratio, writeText
+from . utils import resize, ratio, writeText, thickenImage
 
 class DetectWords:
     debugImages = []
@@ -29,7 +29,7 @@ class DetectWords:
         self.debugImages.append([edgeImage, "2_edgeImage"])
         self.debugImages.append([filledImage, "3_filledImage"])
 
-        return self.getBoundingBoxes(filledImage, img)
+        return self.getBoundingBoxes(filledImage, img, size=self.size)
 
     def getBoundingBoxes(self, img, image, size=2000):
         """Find contours and return bounding boxes"""
@@ -80,8 +80,8 @@ class DetectWords:
         # transform bounding boxes to fit orginal image
         boxes = boundingBoxes.dot(ratio(image, small.shape[0])).astype(np.int64)
 
-        self.debugImages.append([orginal, "5_original_BB"])
         self.debugImages.append([small, "4_small_BB"])
+        self.debugImages.append([orginal, "5_original_BB"])
 
         return boxes[1:]
 
@@ -121,6 +121,9 @@ class DetectWords:
             # else: add to current line
             if box[1] > currentLines + meanHeight:
                 lines.append(tmpLine)
+                # find blank space :D
+                if box[1] > currentLines + (2.5 * meanHeight):
+                    lines.append([])
                 tmpLine = [box]
                 currentLines = box[1]
                 continue
@@ -136,8 +139,12 @@ class DetectWords:
 class Segmenter(DetectWords):
     """Segment image into sorted words line by line"""
 
-    def __init__(self, img):
+    def __init__(self, img, thickness=1, size=2000):
+        self.size = size
+        self.debugImages = []
         self.image = cv2.cvtColor(cv2.imread(img), cv2.COLOR_BGR2RGB)
+        self.image = cv2.GaussianBlur(self.image, (5, 5), 18)
+        self.image = thickenImage(self.image, amount = thickness)
         self.lines = self.detectLines(self.image)
 
     def getLineTexts(self):

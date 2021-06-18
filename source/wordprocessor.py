@@ -1,4 +1,10 @@
+# original text editor by Martin Fitzpatrick
+# tutorial: https://www.mfitzp.com/pyqt-examples/python-rich-text-editor/
+# source: https://www.mfitzp.com/d/wordprocessor.zip
+
 import cv2
+import numpy as np
+from PIL import Image
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -8,6 +14,12 @@ import os
 import sys
 import uuid
 
+from spellchecker import SpellChecker
+spell = SpellChecker()
+
+THICKNESS = [0, 1, 2, 3, -1, -2, -3]
+RESOLUTIONS = [1200, 1000, 800, 600, 2200, 2000, 1800, 1600]
+DEBUG_IMAGES = ['Source', 'Blurred', 'Edge', 'Blob', 'Bounding Boxes']
 FONT_SIZES = [7, 8, 9, 10, 11, 12, 13, 14, 16, 18, 24, 36, 48, 64, 72, 96, 144, 288]
 IMAGE_EXTENSIONS = ['.jpg','.png','.bmp']
 HTML_EXTENSIONS = ['.htm', '.html']
@@ -18,46 +30,68 @@ def hexuuid():
 def splitext(p):
     return os.path.splitext(p)[1].lower()
 
+# https://stackoverflow.com/questions/24106903/resizing-qpixmap-while-maintaining-aspect-ratio
+class ImageLabel(QLabel):
+    def __init__(self, img):
+        super(ImageLabel, self).__init__()
+        if img is None:
+            img = './images/no_preview.png'
+        self.setFrameStyle(QFrame.StyledPanel)
+        self.pixmap = QPixmap(img)
+
+    def paintEvent(self, event):
+        size = self.size()
+        painter = QPainter(self)
+        point = QPoint(0,0)
+        scaledPix = self.pixmap.scaled(size, Qt.KeepAspectRatio, transformMode = Qt.SmoothTransformation)
+        point.setX((size.width() - scaledPix.width())/2)
+        point.setY((size.height() - scaledPix.height())/2)
+        painter.drawPixmap(point, scaledPix)
+
+    def changePixmap(self, img):
+        self.pixmap = QPixmap(img)
+        self.repaint()
+
+    def changePixmapWithArray(self, img):
+        img = np.asarray(img)
+        img = img.astype('uint8')
+        w,h,ch = img.shape
+        if img.ndim == 1:
+            img =  cv2.cvtColor(img,cv2.COLOR_GRAY2RGB)
+        qimg = QImage(img.data, h, w, 3*h, QImage.Format_RGB888)
+        qpixmap = QPixmap(qimg)
+        self.pixmap = QPixmap(qimg)
+        self.repaint()
+
 class TextEdit(QTextEdit):
-
     def canInsertFromMimeData(self, source):
-
         if source.hasImage():
             return True
         else:
             return super(TextEdit, self).canInsertFromMimeData(source)
-
     def insertFromMimeData(self, source):
-
         cursor = self.textCursor()
         document = self.document()
-
         if source.hasUrls():
-
             for u in source.urls():
                 file_ext = splitext(str(u.toLocalFile()))
                 if u.isLocalFile() and file_ext in IMAGE_EXTENSIONS:
                     image = QImage(u.toLocalFile())
                     document.addResource(QTextDocument.ImageResource, u, image)
                     cursor.insertImage(u.toLocalFile())
-
                 else:
                     # If we hit a non-image or non-local URL break the loop and fall out
                     # to the super call & let Qt handle it
                     break
-
             else:
                 # If all were valid images, finish here.
                 return
-
-
         elif source.hasImage():
             image = source.imageData()
             uuid = hexuuid()
             document.addResource(QTextDocument.ImageResource, uuid, image)
             cursor.insertImage(uuid)
             return
-
         super(TextEdit, self).insertFromMimeData(source)
 
 
@@ -80,8 +114,75 @@ class MainWindow(QMainWindow):
         # self.path holds the path of the currently open file.
         # If none, we haven't got a file open yet (or creating new).
         self.path = None
+        self.debugImages = None
 
-        layout.addWidget(self.editor)
+        ######################## Recognition tool bar begin ########################
+
+        rec_toolbar = QToolBar("Recogntion")
+        rec_toolbar.setIconSize(QSize(16, 16))
+        self.addToolBar(rec_toolbar)
+
+        self.progressBar = QProgressBar(self)
+        self.progressBar.hide()
+
+        # Execute recognition
+        run_recognition_action = QAction(QIcon(os.path.join('images', 'play.png')), "Start Recognition", self)
+        run_recognition_action.setStatusTip("Start Recognition")
+        run_recognition_action.triggered.connect(self.triggerRecognition)
+        rec_toolbar.addAction(run_recognition_action)
+
+        # Autocorrection
+        self.autocorrect_action = QAction(QIcon(os.path.join('images', 'autocorrect.png')), "Autocorrection", self)
+        self.autocorrect_action.setStatusTip("Automatic spelling correction")
+        self.autocorrect_action.setCheckable(True)
+        self.autocorrect_action.setChecked(True)
+        self.autocorrect_action.toggled.connect(self.triggerRecognition)
+        rec_toolbar.addAction(self.autocorrect_action)
+
+        # Thickness
+        self.thickness = QComboBox()
+        self.thickness.adjustSize()
+        self.thickness.addItems([str(i) for i in THICKNESS])
+        self.thickness.currentIndexChanged[str].connect(self.triggerRecognition)
+        rec_toolbar.addWidget(self.thickness)
+
+        # Resolution
+        self.resolution = QComboBox()
+        self.resolution.adjustSize()
+        self.resolution.addItems([str(i) for i in RESOLUTIONS])
+        self.resolution.currentIndexChanged[str].connect(self.triggerRecognition)
+        rec_toolbar.addWidget(self.resolution)
+
+        # DebugImages
+        self.debug_preview = QComboBox()
+        self.debug_preview.adjustSize()
+        self.debug_preview.addItems(DEBUG_IMAGES)
+        self.debug_preview.currentIndexChanged[str].connect(self.updatePreviewImage)
+        rec_toolbar.addWidget(self.debug_preview)
+
+        self.rec_toolbar = rec_toolbar
+
+        # add toolbar, image, progressbar and editor in horizontal layout
+        hlayout = QHBoxLayout()
+        gridLayout = QGridLayout()
+
+        self.imageWidget = ImageLabel(self.path)
+        shadow = QGraphicsDropShadowEffect()
+        shadow.setBlurRadius(15)
+        shadow.setOffset(0.0)
+        self.imageWidget.setGraphicsEffect(shadow)
+
+        gridLayout.addWidget(self.rec_toolbar)
+        gridLayout.addWidget(self.imageWidget)
+        gridLayout.addWidget(self.progressBar)
+        gridLayout.setRowStretch(0,1)
+        gridLayout.setColumnStretch(0,1)
+
+        hlayout.addLayout(gridLayout)
+        hlayout.addWidget(self.editor)
+        layout.addLayout(hlayout)
+
+        ######################### Recognition tool bar end  #########################
 
         container = QWidget()
         container.setLayout(layout)
@@ -104,12 +205,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction(open_file_action)
         file_toolbar.addAction(open_file_action)
 
-        #save_file_action = QAction(QIcon(os.path.join('images', 'disk.png')), "Save", self)
-        #save_file_action.setStatusTip("Save current page")
-        #save_file_action.triggered.connect(self.file_save)
-        #file_menu.addAction(save_file_action)
-        #file_toolbar.addAction(save_file_action)
-
         saveas_file_action = QAction(QIcon(os.path.join('images', 'disk--pencil.png')), "Save As...", self)
         saveas_file_action.setStatusTip("Save current page to specified file")
         saveas_file_action.triggered.connect(self.file_saveas)
@@ -122,61 +217,7 @@ class MainWindow(QMainWindow):
         file_menu.addAction(print_action)
         file_toolbar.addAction(print_action)
 
-        edit_toolbar = QToolBar("Edit")
-        edit_toolbar.setIconSize(QSize(30, 30))
-        self.addToolBar(edit_toolbar)
-        edit_menu = self.menuBar().addMenu("&Edit")
-
-        undo_action = QAction(QIcon(os.path.join('images', 'arrow-curve-180-left.png')), "Undo", self)
-        undo_action.setStatusTip("Undo last change")
-        undo_action.triggered.connect(self.editor.undo)
-        edit_toolbar.addAction(undo_action)
-        edit_menu.addAction(undo_action)
-
-        redo_action = QAction(QIcon(os.path.join('images', 'arrow-curve.png')), "Redo", self)
-        redo_action.setStatusTip("Redo last change")
-        redo_action.triggered.connect(self.editor.redo)
-        edit_toolbar.addAction(redo_action)
-        edit_menu.addAction(redo_action)
-
-        edit_menu.addSeparator()
-
-        cut_action = QAction(QIcon(os.path.join('images', 'scissors.png')), "Cut", self)
-        cut_action.setStatusTip("Cut selected text")
-        cut_action.setShortcut(QKeySequence.Cut)
-        cut_action.triggered.connect(self.editor.cut)
-        edit_toolbar.addAction(cut_action)
-        edit_menu.addAction(cut_action)
-
-        copy_action = QAction(QIcon(os.path.join('images', 'document-copy.png')), "Copy", self)
-        copy_action.setStatusTip("Copy selected text")
-        cut_action.setShortcut(QKeySequence.Copy)
-        copy_action.triggered.connect(self.editor.copy)
-        edit_toolbar.addAction(copy_action)
-        edit_menu.addAction(copy_action)
-
-        paste_action = QAction(QIcon(os.path.join('images', 'clipboard-paste-document-text.png')), "Paste", self)
-        paste_action.setStatusTip("Paste from clipboard")
-        cut_action.setShortcut(QKeySequence.Paste)
-        paste_action.triggered.connect(self.editor.paste)
-        edit_toolbar.addAction(paste_action)
-        edit_menu.addAction(paste_action)
-
-        select_action = QAction(QIcon(os.path.join('images', 'selection-input.png')), "Select all", self)
-        select_action.setStatusTip("Select all text")
-        cut_action.setShortcut(QKeySequence.SelectAll)
-        select_action.triggered.connect(self.editor.selectAll)
-        edit_menu.addAction(select_action)
-
-        edit_menu.addSeparator()
-
-        wrap_action = QAction(QIcon(os.path.join('images', 'arrow-continue.png')), "Wrap text to window", self)
-        wrap_action.setStatusTip("Toggle wrap text to window")
-        wrap_action.setCheckable(True)
-        wrap_action.setChecked(True)
-        wrap_action.triggered.connect(self.edit_toggle_wrap)
-        edit_menu.addAction(wrap_action)
-
+        # Format tool bar
         format_toolbar = QToolBar("Format")
         format_toolbar.setIconSize(QSize(24, 24))
         self.addToolBar(format_toolbar)
@@ -316,13 +357,18 @@ class MainWindow(QMainWindow):
         dlg.setIcon(QMessageBox.Critical)
         dlg.show()
 
+    def dialog_message(self, s):
+        dlg = QMessageBox(self)
+        dlg.setText(s)
+        dlg.show()
+
     def file_open(self):
         path, _ = QFileDialog.getOpenFileName(None, "Open file", "", "HTML documents (*.html);Text documents (*.txt);All files (*.*)")
         text = ""
 
         try:
             if path.lower().endswith(('.png', '.jpg', '.jpeg')):
-                text = self.textFromImage(path)
+                self.imageWidget.changePixmap(path)
             else:
                 with open(path, 'rU') as f:
                     text = f.read()
@@ -376,33 +422,114 @@ class MainWindow(QMainWindow):
             self.editor.print_(dlg.printer())
 
     def update_title(self):
-        self.setWindowTitle("%s - Handwritten Document Recognition" % (os.path.basename(self.path) if self.path else "Untitled"))
+        self.setWindowTitle("%s - Handwritten Document Recognizer" % (os.path.basename(self.path) if self.path else "Untitled"))
 
     def edit_toggle_wrap(self):
         self.editor.setLineWrapMode( 1 if self.editor.lineWrapMode() == 0 else 0 )
 
     def textFromImage(self, path):
-        s = self.segmenter(path)
+        self.progressBar.show()
+        self.progressBar.setValue(0)
+        _thickness = int(self.thickness.currentText())
+        _resolution = int(self.resolution.currentText())
+        _autocorrect = self.autocorrect_action.isChecked()
+
+        s = self.segmenter(path, thickness=_thickness, size=_resolution)
+        self.debugImages = s.debugImages
         lines = s.getLineTexts()
+
         finalText = ""
+        lineNums = len(lines)
+        wordNums = len([word for line in lines for word in line])
+        wordCount = 0
+        totalProb = 0
+
         for line in lines:
             for img in line:
                 try:
-                    _img = self.preprocess(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (128, 32))
-                    _b = self.b(None, [_img])
-                    (recognized, probability) = self.model.inferBatch(_b, True)
-                    finalText += recognized[0]
-                except:
+                    recognized, prob = self.recognize_with_autocorrection(img, _autocorrect)
+                    finalText += recognized
+                    totalProb += prob
+                except Exception as e:
+                    print("ERROR: ", e)
                     finalText += "______"
                 finalText += " "
+                wordCount += 1
+                self.progressBar.setValue((wordCount/wordNums)*100)
             finalText += "\n"
 
+        accuracy = np.around((totalProb/wordCount)*100, decimals=2)
+        self.dialog_message(str(f"\t\t\t\nLines : {len(lines)}\nWords : {wordCount}"))
+        self.progressBar.hide()
+        self.debug_preview.setCurrentText(DEBUG_IMAGES[-1])
+        self.updatePreviewImage()
+        #self.model.sess.close()
         return finalText
+
+    def updatePreviewImage(self):
+        text = str(self.debug_preview.currentText())
+        if text == 'Source':
+            if self.path:
+                self.imageWidget.changePixmap(self.path)
+            return
+        if self.debugImages:
+            arr = []
+            images = [Image.fromarray(i[0]).convert('RGB') for i in self.debugImages]
+            for d in self.debugImages:
+                if text == 'Blurred':
+                    arr = images[0]
+                if text == 'Edge':
+                    arr = images[1]
+                if text == 'Blob':
+                    arr = images[2]
+                if text == 'Bounding Boxes':
+                    arr = images[4]
+            self.imageWidget.changePixmapWithArray(arr)
+
+    def recognize(self, img):
+        _img = self.preprocess(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (128, 32))
+        _b = self.b(None, [_img])
+        (recognized, probability) = self.model.inferBatch(_b, True)
+        return recognized[0], probability[0]
+
+    def recognize_with_autocorrection(self, img, autocorrect):
+        text, prob = self.recognize(img)
+        if autocorrect:
+            if prob < 0.5:
+                text = spell.correction(text)
+        return text, prob
+
+    def triggerRecognition(self, *args):
+        if self.path:
+            try:
+                text = self.textFromImage(self.path)
+            except Exception as e:
+                self.dialog_critical(str(e))
+            else:
+                self.editor.setText(text)
 
 if __name__ == '__main__':
 
     app = QApplication(sys.argv)
-    app.setApplicationName("Handwritten Document Recognition")
+    app.setApplicationName("Handwritten Document Recognizer")
+
+    # Dark Theme
+    # app.setStyle("Fusion")
+    # palette = QPalette()
+    # palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    # palette.setColor(QPalette.WindowText, Qt.white)
+    # palette.setColor(QPalette.Base, QColor(25, 25, 25))
+    # palette.setColor(QPalette.AlternateBase, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ToolTipBase, Qt.black)
+    # palette.setColor(QPalette.ToolTipText, Qt.white)
+    # palette.setColor(QPalette.Text, Qt.white)
+    # palette.setColor(QPalette.Button, QColor(53, 53, 53))
+    # palette.setColor(QPalette.ButtonText, Qt.white)
+    # palette.setColor(QPalette.BrightText, Qt.red)
+    # palette.setColor(QPalette.Link, QColor(42, 130, 218))
+    # palette.setColor(QPalette.Highlight, QColor(42, 130, 218))
+    # palette.setColor(QPalette.HighlightedText, Qt.black)
+    # app.setPalette(palette)
 
     window = MainWindow()
     app.exec_()

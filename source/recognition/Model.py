@@ -166,6 +166,7 @@ class Model:
         print('Python: ' + sys.version)
         print('Tensorflow: ' + tf.__version__)
 
+        #with tf.compat.v1.Session() as sess:
         sess = tf.compat.v1.Session()  # TF session
 
         saver = tf.compat.v1.train.Saver(max_to_keep=1)  # saver saves model to file

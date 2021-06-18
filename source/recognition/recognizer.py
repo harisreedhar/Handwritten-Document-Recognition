@@ -17,7 +17,7 @@ DATASET_DIR = Path("/home/hari/Documents/s6Project_New/recognition/dataset/")
 CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
 
 # set wordbeam search as default decoder
-decoderType = DecoderType.BestPath
+decoderType = DecoderType.WordBeamSearch
 
 class FilePaths:
     "filenames and paths to data"
