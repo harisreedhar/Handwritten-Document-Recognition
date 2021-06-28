@@ -155,7 +155,7 @@ class Model:
 
             # decode using the "Words" mode of word beam search
             from word_beam_search import WordBeamSearch
-            self.decoder = WordBeamSearch(50, 'Words', 0.0, corpus.encode('utf8'), chars.encode('utf8'),
+            self.decoder = WordBeamSearch(25, 'Words', 0.0, corpus.encode('utf8'), chars.encode('utf8'),
                                           wordChars.encode('utf8'))
 
             # the input to the decoder must have softmax already applied
