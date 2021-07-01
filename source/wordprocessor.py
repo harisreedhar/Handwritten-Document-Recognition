@@ -22,7 +22,6 @@ from recognition import getModel, preprocess
 
 from spellchecker import SpellChecker
 spell = SpellChecker()
-from textblob import TextBlob
 
 THICKNESS = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5]
 RESOLUTIONS = [400, 600, 800, 1000, 1200, 1400, 1600, 1800, 2000, 2200]

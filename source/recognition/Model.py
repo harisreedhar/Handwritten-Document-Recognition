@@ -1,3 +1,5 @@
+# original code: https://github.com/githubharald/SimpleHTR
+
 import os
 import sys
 
@@ -5,12 +7,11 @@ import numpy as np
 import tensorflow as tf
 
 # Path
-CURR_WORKDIR  = os.path.dirname(os.path.realpath(__file__))
-WORD_CHARLIST = CURR_WORKDIR + '/model/wordCharList.txt'
-CORPUS        = CURR_WORKDIR + '/data/corpus.txt'
-MODEL_DIR     = CURR_WORKDIR + '/model/'
-DUMP_DIR      = CURR_WORKDIR + '/dump/'
-SNAPSHOT_PATH = CURR_WORKDIR + '/model/snapshot'
+WORD_CHARLIST = './recognition/model/wordCharList.txt'
+CORPUS        = './recognition/data/corpus.txt'
+MODEL_DIR     = './recognition/model/'
+DUMP_DIR      = './recognition/dump/'
+SNAPSHOT_PATH = './recognition/model/snapshot'
 
 # Disable eager mode
 tf.compat.v1.disable_eager_execution()
@@ -69,16 +70,6 @@ class Model:
         # create layers
         pool = cnnIn4d  # input to first CNN layer
         for i in range(numLayers):
-            # Original code
-            # kernel = tf.Variable(
-            #     tf.random.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]],
-            #                                stddev=0.1))
-            # conv = tf.nn.conv2d(input=pool, filters=kernel, padding='SAME', strides=(1, 1, 1, 1))
-            # conv_norm = tf.compat.v1.layers.batch_normalization(conv, training=self.is_train)
-            # relu = tf.nn.relu(conv_norm)
-            # pool = tf.nn.max_pool2d(input=relu, ksize=(1, poolVals[i][0], poolVals[i][1], 1),
-            #                         strides=(1, strideVals[i][0], strideVals[i][1], 1), padding='VALID')
-
             kernel = tf.Variable(tf.random.truncated_normal([kernelVals[i], kernelVals[i], featureVals[i], featureVals[i + 1]], stddev=0.1))
             conv = tf.nn.conv2d(input=pool, filters=kernel, padding='SAME',  strides=(1,1,1,1))
             conv_norm = tf.compat.v1.layers.batch_normalization(conv, training=self.is_train)

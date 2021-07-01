@@ -9,7 +9,7 @@ from . utils import preprocess
 
 # path
 CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
-DATASET_DIR  = CURR_WORKDIR + '/dataset'
+DATASET_DIR  = './recognition/dataset'
 IAM_DIR      = DATASET_DIR + '/IAM/img'
 LMDB_PATH    = Path(DATASET_DIR + '/IAM/lmdb')
 CUSTOM_DIR   = DATASET_DIR + '/CUSTOM/'

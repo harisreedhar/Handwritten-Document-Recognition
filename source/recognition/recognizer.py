@@ -13,18 +13,17 @@ from . utils import preprocess
 import timeit
 start = timeit.default_timer()
 
-DATASET_DIR = Path("/home/hari/Documents/s6Project_New/recognition/dataset/")
-CURR_WORKDIR = os.path.dirname(os.path.realpath(__file__))
+DATASET_DIR = Path("./recognition/dataset/")
 
 # set wordbeam search as default decoder
 decoderType = DecoderType.WordBeamSearch
 
 class FilePaths:
     "filenames and paths to data"
-    fnCharList = CURR_WORKDIR + '/model/charList.txt'
-    fnSummary = CURR_WORKDIR + '/model/summary.json'
-    fnInfer = CURR_WORKDIR + '/data/test.png'
-    fnCorpus = CURR_WORKDIR + '/data/corpus.txt'
+    fnCharList = './recognition/model/charList.txt'
+    fnSummary = './recognition/model/summary.json'
+    fnInfer = './recognition/data/test.png'
+    fnCorpus = './recognition/data/corpus.txt'
 
 
 def write_summary(charErrorRates, wordAccuracies):

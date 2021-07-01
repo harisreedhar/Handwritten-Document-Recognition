@@ -1,10 +1,58 @@
+absl-py==0.13.0
+astunparse==1.6.3
+cachetools==4.2.2
+certifi==2021.5.30
+chardet==4.0.0
+cycler==0.10.0
 editdistance==0.5.3
+gast==0.3.3
+google-auth==1.32.1
+google-auth-oauthlib==0.4.4
+google-pasta==0.2.0
+grpcio==1.38.1
+h5py==2.10.0
+idna==2.10
 imutils==0.5.4
-matplotlib==3.3.4
-numpy==1.19.2
+Jinja2==3.0.1
+Keras-Preprocessing==1.1.2
+kiwisolver @ file:///tmp/build/80754af9/kiwisolver_1612282420641/work
+lmdb==1.2.1
+Markdown==3.3.4
+MarkupSafe==2.0.1
+matplotlib @ file:///tmp/build/80754af9/matplotlib-suite_1613407855456/work
+mkl-fft==1.3.0
+mkl-random @ file:///tmp/build/80754af9/mkl_random_1618853849286/work
+mkl-service==2.3.0
+numpy==1.21.0
+oauthlib==3.1.1
+olefile==0.46
 opencv-python==3.4.10.35
-pillow==8.1.2
+opt-einsum==3.3.0
+path==16.0.0
+Pillow @ file:///tmp/build/80754af9/pillow_1617383569452/work
+protobuf==3.17.3
+pyasn1==0.4.8
+pyasn1-modules==0.2.8
+pyparsing @ file:///home/linux1/recipes/ci/pyparsing_1610983426697/work
+PyQt5==5.15.2
+PyQt5-sip==12.9.0
 pyspellchecker==0.6.2
-pyqt5==5.15.2
+python-dateutil @ file:///home/ktietz/src/ci/python-dateutil_1611928101742/work
 qt-material==2.8.8
-tensorflow==2.4.1
+requests==2.25.1
+requests-oauthlib==1.3.0
+rsa==4.7.2
+scipy==1.4.1
+sip==4.19.13
+six @ file:///tmp/build/80754af9/six_1623709665295/work
+tensorboard==2.2.2
+tensorboard-plugin-wit==1.8.0
+tensorflow==2.2.0
+tensorflow-estimator==2.2.0
+termcolor==1.1.0
+tornado @ file:///tmp/build/80754af9/tornado_1606942300299/work
+urllib3==1.26.6
+Werkzeug==2.0.1
+word-beam-search @ file:///home/hari/Downloads/CTCWordBeamSearch-master
+wrapt==1.12.1
+
